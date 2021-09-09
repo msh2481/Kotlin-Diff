@@ -1,3 +1,4 @@
+import java.io.BufferedReader
 import java.io.File
 import java.lang.Integer.max
 import kotlin.system.exitProcess
@@ -181,6 +182,33 @@ fun longHash(s: String) : Long {
 }
 
 /**
+ * Splits the whole text into a smaller parts by entries of specified symbols
+ *
+ * They can be lines (\n), words ( ), sentences (.)
+ *
+ * Usage:
+ * assert(arrayOf("a", "b") contentEquals arrayOf("a\nb"))
+ */
+fun tokenizeLines(s: String, delimiters: String) : Array<String> {
+    val parts = mutableListOf<String>()
+    var buffer = ""
+    for (c in s) {
+        if (c in delimiters) {
+            if (buffer.length > 0) {
+                parts.add(buffer)
+                buffer = ""
+            }
+        } else {
+            buffer += c
+        }
+    }
+    if (buffer.length > 0) {
+        parts.add(buffer)
+    }
+    return parts.toTypedArray()
+}
+
+/**
  * Replace lines of the text with their hash values
  *
  * Usage:
@@ -212,18 +240,20 @@ fun main(args: Array<String>) {
     val TEXT_CYAN = "\u001B[36m"
     val TEXT_WHITE = "\u001B[37m"
 
-    val linesA = File(args[0]).bufferedReader().readLines().toTypedArray()
-    val linesB = File(args[1]).bufferedReader().readLines().toTypedArray()
-    val arrA = toHashArray(linesA)
-    val arrB = toHashArray(linesB)
+    val textA = File(args[0]).bufferedReader().use(BufferedReader::readText)
+    val textB = File(args[1]).bufferedReader().use(BufferedReader::readText)
+    val tokensA = tokenizeLines(textA, ".")
+    val tokensB = tokenizeLines(textB, ".")
+    val arrA = toHashArray(tokensA)
+    val arrB = toHashArray(tokensB)
     val result = diff(arrA, arrB)
     for ((i, j) in result) {
         if (i > 0 && j > 0) {
-            println("=${linesA[i - 1]}")
+            println("=${tokensA[i - 1]}")
         } else if (i > 0) {
-            println("$TEXT_RED<${linesA[i - 1]}$TEXT_RESET")
+            println("$TEXT_RED<${tokensA[i - 1]}$TEXT_RESET")
         } else if (j > 0) {
-            println(">$TEXT_GREEN${linesB[j - 1]}$TEXT_RESET")
+            println("$TEXT_GREEN>${tokensB[j - 1]}$TEXT_RESET")
         } else {
             assert(false) {"Every line should come from somewhere"}
         }
