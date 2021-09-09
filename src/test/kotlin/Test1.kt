@@ -14,7 +14,7 @@ internal class Test1 {
     fun runHashTest(a: String, b: String)  {
         val expectedResult = (a == b)
         assert(
-            (toHashArray(a) contentEquals toHashArray(b)) == expectedResult
+            (longHash(a) == longHash(b)) == expectedResult
         ) { "runHashTest($a, $b)" }
     }
 
@@ -47,6 +47,10 @@ internal class Test1 {
         runLcsTest(arrayOf(1, 2, 3), arrayOf(1, 2, 3), 3)
         runLcsTest(arrayOf(1, 2, 3), arrayOf(3, 2, 1), 1)
         runLcsTest(arrayOf(1, 1, 1, 2, 2, 2), arrayOf(2, 2, 2, 1, 1, 1), 3)
+    }
+    @Test
+    fun diffTests() {
+        assertEquals(listOf(Pair(1, 0), Pair(2, 1), Pair(0, 2), Pair(3, 0)), diff(arrayOf(1, 3, 2), arrayOf(3, 4)))
     }
 }
 

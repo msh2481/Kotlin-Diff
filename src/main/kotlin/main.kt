@@ -1,4 +1,6 @@
+import java.io.File
 import java.lang.Integer.max
+import kotlin.system.exitProcess
 
 /**
  * Testing i-th bit in a
@@ -63,19 +65,19 @@ fun lcsBaseline(a: Array<Long>, b: Array<Long>) : Int {
 }
 
 /**
- * Main algorithm for finding LCS length for two arrays
+ * Dynamic programming for finding LCS length for two arrays
  *
  * Works in O(|a| * |b|), where a, b are the given arrays
  * (Algorithm on Wikipedia)[https://en.wikipedia.org/wiki/Longest_common_subsequence_problem#Solution_for_two_sequences]
  *
  * Usage:
- * assertEquals(3, lcsBaseline(arrayOf(4, 1, 5, 6, 2, 7, 3), arrayOf(1, 9, 10, 11, 2, 3, 8))
+ * println(lcsDP(arrayOf(4, 1, 5, 6, 2, 7, 3), arrayOf(1, 9, 10, 11, 2, 3, 8)).contentDeepToString())
  *
  * @param[a] first array
  * @param[b] second array
- * @return length of LCS(a, b)
+ * @return dp table
  */
-fun lcs(a: Array<Long>, b: Array<Long>) : Int {
+fun lcsDP(a: Array<Long>, b: Array<Long>) : Array<Array<Int>> {
     val n = a.size
     val m = b.size
     val dp : Array<Array<Int>> = Array (n + 1) { Array(m + 1) {0} }
@@ -88,7 +90,72 @@ fun lcs(a: Array<Long>, b: Array<Long>) : Int {
             }
         }
     }
-    return dp[n][m]
+    return dp
+}
+
+/**
+ * LCS length for two arrays
+ *
+ * Runs lcsDP and takes last value from the table
+ *
+ * Usage:
+ * assertEquals(3, lcs(arrayOf(4, 1, 5, 6, 2, 7, 3), arrayOf(1, 9, 10, 11, 2, 3, 8))
+ *
+ * @param[a] first array
+ * @param[b] second array
+ * @return
+ */
+fun lcs(a: Array<Long>, b: Array<Long>) : Int {
+    return lcsDP(a, b)[a.size][b.size]
+}
+
+/**
+ * Optimaly matches elements from two arrays
+ *
+ * Firstly, it runs lcsDP and recovers path to optimal answer
+ * Then in creates diff = {(posA, posB) for each line in A U B},
+ * where posA = index of the line in A or -1, posB = same for B
+ *
+ * Usage:
+ * assertEquals(arrayOf(Pair(1, -1), Pair(2, 2), Pair(1, 3), Pair(2, 2)), diff(arrayOf(1, 3, 2), arrayOf(3, 4))
+ *
+ * @param[a] first array
+ * @param[b] second array
+ * @return diff as described above
+ */
+
+fun diff(a: Array<Long>, b: Array<Long>) : List<Pair<Int, Int>> {
+    val diff = mutableListOf<Pair<Int, Int>>()
+
+    fun addFromA(i: Int, j: Int) = diff.add(Pair(i, 0))
+    fun addFromB(i: Int, j: Int) = diff.add(Pair(0, j))
+    fun addFromBoth(i: Int, j: Int) = diff.add(Pair(i, j))
+    val dp = lcsDP(a, b)
+    var i = a.size
+    var j = b.size
+    while (i > 0 && j > 0) {
+        if (dp[i][j] == dp[i - 1][j]) {
+            addFromA(i, j)
+            --i
+        } else if (dp[i][j] == dp[i][j - 1]) {
+            addFromB(i, j)
+            --j
+        } else {
+            assert(dp[i - 1][j - 1] + 1 == dp[i][j]) {"Incorrect dp"}
+            addFromBoth(i, j)
+            --i
+            --j
+        }
+    }
+    while (i > 0) {
+        addFromA(i, j)
+        --i
+    }
+    while (j > 0) {
+        addFromB(i, j)
+        --j
+    }
+    return diff.reversed()
 }
 
 /**
@@ -114,33 +181,51 @@ fun longHash(s: String) : Long {
 }
 
 /**
- * Splits text into lines and replace them with hash values
- *
- * Let's maintain buffer for current line. When we reach '\n'
- * let's add hash of the line to list and clean buffer. Also
- * there is extra '\n' added to the end of the string, so that
- * we can not deal with last line manually.
+ * Replace lines of the text with their hash values
  *
  * Usage:
- * assert(toHashArray("a\nb") contentEquals arrayOf(97, 98))
+ * assert(toHashArray(arrayOf("a", b")) contentEquals arrayOf(97, 98))
  *
- * @param[s] given string
+ * @param[lines] given string
  */
-fun toHashArray(s: String) : Array<Long> {
-    val sWithEnding = s + "\n"
-    var currentLine = ""
-    val hashList = MutableList<Long>(0) {0}
-    for (c in sWithEnding) {
-        if (c == '\n') {
-            hashList.add(longHash(currentLine))
-            currentLine = ""
-        } else {
-            currentLine += c
-        }
+fun toHashArray(lines: Array<String>) : Array<Long> {
+    val hashList = mutableListOf<Long>()
+    for (s in lines) {
+        hashList.add(longHash(s))
     }
     return hashList.toTypedArray()
 }
 
 fun main(args: Array<String>) {
-    assert(args.size == 2)
+    if (args.size != 2) {
+        println("There should be exactly two input files")
+        exitProcess(0)
+    }
+
+    val TEXT_RESET = "\u001B[0m"
+    val TEXT_BLACK = "\u001B[30m"
+    val TEXT_RED = "\u001B[31m"
+    val TEXT_GREEN = "\u001B[32m"
+    val TEXT_YELLOW = "\u001B[33m"
+    val TEXT_BLUE = "\u001B[34m"
+    val TEXT_PURPLE = "\u001B[35m"
+    val TEXT_CYAN = "\u001B[36m"
+    val TEXT_WHITE = "\u001B[37m"
+
+    val linesA = File(args[0]).bufferedReader().readLines().toTypedArray()
+    val linesB = File(args[1]).bufferedReader().readLines().toTypedArray()
+    val arrA = toHashArray(linesA)
+    val arrB = toHashArray(linesB)
+    val result = diff(arrA, arrB)
+    for ((i, j) in result) {
+        if (i > 0 && j > 0) {
+            println("=${linesA[i - 1]}")
+        } else if (i > 0) {
+            println("$TEXT_RED<${linesA[i - 1]}$TEXT_RESET")
+        } else if (j > 0) {
+            println(">$TEXT_GREEN${linesB[j - 1]}$TEXT_RESET")
+        } else {
+            assert(false) {"Every line should come from somewhere"}
+        }
+    }
 }
