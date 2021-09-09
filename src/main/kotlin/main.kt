@@ -229,6 +229,9 @@ fun main(args: Array<String>) {
         println("There should be exactly two input files")
         exitProcess(0)
     }
+    val colorOutput = true
+    val inputDelim = "\n "
+    val outputDelim = " "
 
     val TEXT_RESET = "\u001B[0m"
     val TEXT_BLACK = "\u001B[30m"
@@ -242,20 +245,27 @@ fun main(args: Array<String>) {
 
     val textA = File(args[0]).bufferedReader().use(BufferedReader::readText)
     val textB = File(args[1]).bufferedReader().use(BufferedReader::readText)
-    val tokensA = tokenizeLines(textA, ".")
-    val tokensB = tokenizeLines(textB, ".")
+    val tokensA = tokenizeLines(textA, inputDelim)
+    val tokensB = tokenizeLines(textB, inputDelim)
+    println("${tokensA.size}, ${tokensB.size}")
     val arrA = toHashArray(tokensA)
     val arrB = toHashArray(tokensB)
     val result = diff(arrA, arrB)
     for ((i, j) in result) {
         if (i > 0 && j > 0) {
-            println("=${tokensA[i - 1]}")
+            print(if (colorOutput) TEXT_WHITE else "=")
+            print("${tokensA[i - 1]}$outputDelim")
         } else if (i > 0) {
-            println("$TEXT_RED<${tokensA[i - 1]}$TEXT_RESET")
+            print(if (colorOutput) TEXT_RED else "<")
+            print("$TEXT_RED${tokensA[i - 1]}$TEXT_RESET$outputDelim")
         } else if (j > 0) {
-            println("$TEXT_GREEN>${tokensB[j - 1]}$TEXT_RESET")
+            print(if (colorOutput) TEXT_GREEN else ">")
+            print("${tokensB[j - 1]}$TEXT_RESET$outputDelim")
         } else {
             assert(false) {"Every line should come from somewhere"}
+        }
+        if (colorOutput) {
+            print(TEXT_RESET)
         }
     }
 }
