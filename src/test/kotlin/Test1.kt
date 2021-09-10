@@ -50,7 +50,7 @@ internal class Test1 {
     }
     @Test
     fun diffTests() {
-        assertEquals(listOf(Pair(1, 0), Pair(2, 1), Pair(0, 2), Pair(3, 0)), diff(arrayOf(1, 3, 2), arrayOf(3, 4)))
+        assertEquals(listOf(LinePosition(1, 0), LinePosition(2, 1), LinePosition(0, 2), LinePosition(3, 0)), diff(arrayOf(1, 3, 2), arrayOf(3, 4)))
     }
 }
 

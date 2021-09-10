@@ -3,6 +3,11 @@ import java.io.File
 import java.lang.Integer.max
 import kotlin.system.exitProcess
 
+/** TODO
+ * Add tests (from file, and by assert)
+ * NlogN heuristic (find largest common SUBSTRING, split by it, run recursion)
+ */
+
 /**
  * Testing i-th bit in a
  *
@@ -111,7 +116,7 @@ fun lcs(a: Array<Long>, b: Array<Long>) : Int {
 }
 
 /**
- * Optimaly matches elements from two arrays
+ * Optimally matches elements from two arrays
  *
  * Firstly, it runs lcsDP and recovers path to optimal answer
  * Then in creates diff = {(posA, posB) for each line in A U B},
@@ -125,12 +130,14 @@ fun lcs(a: Array<Long>, b: Array<Long>) : Int {
  * @return diff as described above
  */
 
-fun diff(a: Array<Long>, b: Array<Long>) : List<Pair<Int, Int>> {
-    val diff = mutableListOf<Pair<Int, Int>>()
+data class LinePosition(val posA : Int, val posB : Int)
 
-    fun addFromA(i: Int, j: Int) = diff.add(Pair(i, 0))
-    fun addFromB(i: Int, j: Int) = diff.add(Pair(0, j))
-    fun addFromBoth(i: Int, j: Int) = diff.add(Pair(i, j))
+fun diff(a: Array<Long>, b: Array<Long>) : List<LinePosition> {
+    val diff = mutableListOf<LinePosition>()
+
+    fun addFromA(i: Int, j: Int) = diff.add(LinePosition(i, 0))
+    fun addFromB(i: Int, j: Int) = diff.add(LinePosition(0, j))
+    fun addFromBoth(i: Int, j: Int) = diff.add(LinePosition(i, j))
     val dp = lcsDP(a, b)
     var i = a.size
     var j = b.size
@@ -182,33 +189,6 @@ fun longHash(s: String) : Long {
 }
 
 /**
- * Splits the whole text into a smaller parts by entries of specified symbols
- *
- * They can be lines (\n), words ( ), sentences (.)
- *
- * Usage:
- * assert(arrayOf("a", "b") contentEquals arrayOf("a\nb"))
- */
-fun tokenizeLines(s: String, delimiters: String) : Array<String> {
-    val parts = mutableListOf<String>()
-    var buffer = ""
-    for (c in s) {
-        if (c in delimiters) {
-            if (buffer.length > 0) {
-                parts.add(buffer)
-                buffer = ""
-            }
-        } else {
-            buffer += c
-        }
-    }
-    if (buffer.length > 0) {
-        parts.add(buffer)
-    }
-    return parts.toTypedArray()
-}
-
-/**
  * Replace lines of the text with their hash values
  *
  * Usage:
@@ -224,14 +204,59 @@ fun toHashArray(lines: Array<String>) : Array<Long> {
     return hashList.toTypedArray()
 }
 
+/**
+ * Just prints help
+ */
+fun printHelp() {
+    println("""
+                                                                Usage: diff [OPTION]... FILES
+                                                                              (C) diff --help
+
+
+This program compares files line by line or by any other unit you can define with a regex.
+There should be exactly two files and any number of options which begin with a hyphen.
+File order matters while option order do not.
+
+-c, --color                     use colors instead of '<', '>' and '='
+-i, --input-delim=REGEX         splits input into units with REGEX
+-o, --output-delim=STRING       joins output with STRING
+-n, --no-newline                removes 0x0a and 0x0d from text
+-h, --help                      display this help and exit
+
+Full description of the REGEX format:
+https://docs.oracle.com/javase/8/docs/api/java/util/regex/Pattern.html
+
+Usage:
+
+diff A B                        plain text line-by-line diff for A and B
+diff --color A B                colored diff
+diff -i=" " -o=" " A B          word-by-word diff
+diff -n -c -i=" " -o=" " A B    colored diff without newlines (e.g. for Windows files in Linux shell)
+or even...
+diff A --input-delim="[\.\?\!]" --output-delim=";\t" B --color
+                                colored sentence-by-sentence diff
+                                for A and B with output separated by ";\t"
+    """
+    )
+}
+
 fun main(args: Array<String>) {
-    if (args.size != 2) {
-        println("There should be exactly two input files")
+    fun argValue(vararg names: String, defaultValue : String?) : String? {
+        for (name in names) {
+            args.find{ it.length >= name.length && it.substring(0, name.length) == name }?.let{
+                return if (it.length > name.length && it[name.length] == '=') it.substring(name.length + 1) else defaultValue
+            }
+        }
+        return null
+    }
+    val files = args.filter{ it.first() != '-' }
+    if (files.size != 2 || args.contains("-h") || args.contains("--help")) {
+        printHelp()
         exitProcess(0)
     }
-    val colorOutput = true
-    val inputDelim = "\n "
-    val outputDelim = " "
+    val colorOutput = ("-c" in args) || ("--color" in args)
+    val inputDelim = Regex((argValue("-i", "--input-delim", defaultValue = null) ?: "\n").trim('"'))
+    val outputDelim = (argValue("-o", "--output-delim", defaultValue = null) ?: "\n").trim('"')
 
     val TEXT_RESET = "\u001B[0m"
     val TEXT_BLACK = "\u001B[30m"
@@ -243,24 +268,25 @@ fun main(args: Array<String>) {
     val TEXT_CYAN = "\u001B[36m"
     val TEXT_WHITE = "\u001B[37m"
 
-    val textA = File(args[0]).bufferedReader().use(BufferedReader::readText)
-    val textB = File(args[1]).bufferedReader().use(BufferedReader::readText)
-    val tokensA = tokenizeLines(textA, inputDelim)
-    val tokensB = tokenizeLines(textB, inputDelim)
-    println("${tokensA.size}, ${tokensB.size}")
+    val textA = File(files[0]).bufferedReader().use(BufferedReader::readText)
+    val textB = File(files[1]).bufferedReader().use(BufferedReader::readText)
+    val newlines = listOf(Char(10), Char(13))
+    val tokensA = textA.split(inputDelim).map{ it.filter { it !in newlines }}.toTypedArray()
+    val tokensB = textB.split(inputDelim).map{ it.filter { it !in newlines }}.toTypedArray()
+
     val arrA = toHashArray(tokensA)
     val arrB = toHashArray(tokensB)
     val result = diff(arrA, arrB)
     for ((i, j) in result) {
         if (i > 0 && j > 0) {
-            print(if (colorOutput) TEXT_WHITE else "=")
+            print(if (colorOutput) TEXT_RESET else "=")
             print("${tokensA[i - 1]}$outputDelim")
         } else if (i > 0) {
             print(if (colorOutput) TEXT_RED else "<")
-            print("$TEXT_RED${tokensA[i - 1]}$TEXT_RESET$outputDelim")
+            print("${tokensA[i - 1]}$outputDelim")
         } else if (j > 0) {
             print(if (colorOutput) TEXT_GREEN else ">")
-            print("${tokensB[j - 1]}$TEXT_RESET$outputDelim")
+            print("${tokensB[j - 1]}$outputDelim")
         } else {
             assert(false) {"Every line should come from somewhere"}
         }
