@@ -4,8 +4,11 @@ import java.lang.Integer.max
 import kotlin.system.exitProcess
 
 /** TODO
- * Add tests (from file, and by assert)
+ * Add tests (from file)
+ * Russian text
+ * Char-by-char
  * NlogN heuristic (find largest common SUBSTRING, split by it, run recursion)
+ * Block edit
  */
 
 /**
