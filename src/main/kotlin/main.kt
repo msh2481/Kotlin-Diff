@@ -4,9 +4,8 @@ import java.lang.Integer.max
 import kotlin.system.exitProcess
 
 /** TODO
- * Add tests (from file)
+ * Char-by-char and no regex
  * Russian text
- * Char-by-char
  * NlogN heuristic (find largest common SUBSTRING, split by it, run recursion)
  * Block edit
  */
@@ -27,6 +26,8 @@ import kotlin.system.exitProcess
 fun testBit(a : Int, i : Int) : Boolean {
     return ((a shr i) and 1) != 0
 }
+
+data class LinePosition(val posA : Int, val posB : Int)
 
 /**
  * Slow algorithm for finding LCS length for two arrays
@@ -133,7 +134,6 @@ fun lcs(a: Array<Long>, b: Array<Long>) : Int {
  * @return diff as described above
  */
 
-data class LinePosition(val posA : Int, val posB : Int)
 
 fun diff(a: Array<Long>, b: Array<Long>) : List<LinePosition> {
     val diff = mutableListOf<LinePosition>()
@@ -225,7 +225,7 @@ File order matters while option order do not.
 -o, --output-delim=STRING       joins output with STRING
 -n, --no-newline                removes 0x0a and 0x0d from text
 -h, --help                      display this help and exit
-
+-g, --ignore-case               convert all input to lowercase before comparing             
 Full description of the REGEX format:
 https://docs.oracle.com/javase/8/docs/api/java/util/regex/Pattern.html
 
@@ -243,58 +243,65 @@ diff A --input-delim="[\.\?\!]" --output-delim=";\t" B --color
     )
 }
 
+enum class Color(val code: String) {
+    Reset("\u001B[0m"),
+    Red("\u001B[31m"),
+    Green("\u001B[32m"),
+    White("\u001B[37m");
+    override fun toString() : String {
+        return code
+    }
+}
+
 fun main(args: Array<String>) {
-    fun argValue(vararg names: String, defaultValue : String?) : String? {
+    fun argValue(vararg names: String) : String? {
         for (name in names) {
             args.find{ it.length >= name.length && it.substring(0, name.length) == name }?.let{
-                return if (it.length > name.length && it[name.length] == '=') it.substring(name.length + 1) else defaultValue
+                return if (it.length > name.length && it[name.length] == '=') it.substring(name.length + 1) else ""
             }
         }
         return null
     }
-    val files = args.filter{ it.first() != '-' }
-    if (files.size != 2 || args.contains("-h") || args.contains("--help")) {
+    val files = args.filter{ it.length > 0 && it.first() != '-' }
+    if (files.size != 2 || argValue("-h", "--help") != null) {
         printHelp()
         exitProcess(0)
     }
-    val colorOutput = ("-c" in args) || ("--color" in args)
-    val inputDelim = Regex((argValue("-i", "--input-delim", defaultValue = null) ?: "\n").trim('"'))
-    val outputDelim = (argValue("-o", "--output-delim", defaultValue = null) ?: "\n").trim('"')
+    val colorOutput = argValue("-c", "--color") != null
+    val ignoreCase = argValue("-g", "--ignore-case") != null
+    val ignoreNewlines = argValue("-n", "--no-newline") != null
+    val inputDelim = Regex((argValue("-i", "--input-delim") ?: "\n").trim('"'))
+    val outputDelim = (argValue("-o", "--output-delim") ?: "\n").trim('"')
 
-    val TEXT_RESET = "\u001B[0m"
-    val TEXT_BLACK = "\u001B[30m"
-    val TEXT_RED = "\u001B[31m"
-    val TEXT_GREEN = "\u001B[32m"
-    val TEXT_YELLOW = "\u001B[33m"
-    val TEXT_BLUE = "\u001B[34m"
-    val TEXT_PURPLE = "\u001B[35m"
-    val TEXT_CYAN = "\u001B[36m"
-    val TEXT_WHITE = "\u001B[37m"
+    fun readInputFromFile(name: String) : Array<String> {
+        val newlines = listOf(Char(10), Char(13))
+        val raw : String = File(name).bufferedReader().use(BufferedReader::readText)
+        val text : String = if (ignoreCase) raw.map{ it.lowercaseChar() }.toString() else raw
+        val tokens : List<String> = text.split(inputDelim).map{ it.filter{ !ignoreNewlines || it !in newlines } }
+        return tokens.toTypedArray()
+    }
 
-    val textA = File(files[0]).bufferedReader().use(BufferedReader::readText)
-    val textB = File(files[1]).bufferedReader().use(BufferedReader::readText)
-    val newlines = listOf(Char(10), Char(13))
-    val tokensA = textA.split(inputDelim).map{ it.filter { it !in newlines }}.toTypedArray()
-    val tokensB = textB.split(inputDelim).map{ it.filter { it !in newlines }}.toTypedArray()
-
+    val tokensA = readInputFromFile(files[0])
+    val tokensB = readInputFromFile(files[1])
     val arrA = toHashArray(tokensA)
     val arrB = toHashArray(tokensB)
+
     val result = diff(arrA, arrB)
     for ((i, j) in result) {
         if (i > 0 && j > 0) {
-            print(if (colorOutput) TEXT_RESET else "=")
+            print(if (colorOutput) Color.Reset else "=")
             print("${tokensA[i - 1]}$outputDelim")
         } else if (i > 0) {
-            print(if (colorOutput) TEXT_RED else "<")
+            print(if (colorOutput) Color.Red else "<")
             print("${tokensA[i - 1]}$outputDelim")
         } else if (j > 0) {
-            print(if (colorOutput) TEXT_GREEN else ">")
+            print(if (colorOutput) Color.Green else ">")
             print("${tokensB[j - 1]}$outputDelim")
         } else {
             assert(false) {"Every line should come from somewhere"}
         }
         if (colorOutput) {
-            print(TEXT_RESET)
+            print(Color.Reset)
         }
     }
 }

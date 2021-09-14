@@ -1,8 +1,26 @@
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.PrintStream
+import kotlin.math.min
 import kotlin.random.Random
 import kotlin.random.nextInt
 import kotlin.test.*
 
 internal class Test1 {
+    private val standardOut = System.out
+    private val standardIn = System.`in`
+    private var stream = ByteArrayOutputStream()
+
+    fun setUp() {
+        stream = ByteArrayOutputStream()
+        System.setOut(PrintStream(stream))
+    }
+
+    fun tearDown() {
+        System.setOut(standardOut)
+        System.setIn(standardIn)
+    }
+
     @Test
     fun bitTests() {
         assertEquals(true, testBit(11, 0), "1011_2 at 0")
@@ -85,10 +103,11 @@ internal class Test1 {
         }
     }
 
-    fun testDiffOutput(arrA: Array<Long>, arrB: Array<Long>, output: List<LinePosition>) {
+    fun testDiffOutput(arrA: Array<Long>, arrB: Array<Long>, output: List<LinePosition>, numOfEdits: Int? = null) {
         var ptrA = 0
         var ptrB = 0
         assertEquals(arrA.size + arrB.size - lcs(arrA, arrB), output.size)
+        numOfEdits?.let{ assert(it >= output.size) { "better edit script is known: $it vs ${output.size}"} }
         for ((posA, posB) in output) {
             if (posA > 0 && posB > 0) {
                 assert(ptrA < arrA.size) { "ptrA < arrA.size" }
@@ -118,6 +137,42 @@ internal class Test1 {
             val output = diff(arrA, arrB)
             testDiffOutput(arrA, arrB, output)
         }
+    }
+
+    @Test
+    fun trickyDiffTests() {
+        repeat(10000) {
+            val max = 1 shl Random.nextInt(20)
+            val arrA = genLongArray(Random.nextInt(1..100), max)
+            val buff = arrA.toMutableList()
+            val edits = Random.nextInt(0..min(10, arrA.size))
+            repeat(edits) {
+                if (Random.nextInt(2) == 0) {
+                    buff.removeAt(Random.nextInt(buff.size))
+                } else {
+                    buff.add(Random.nextInt(buff.size + 1), Random.nextInt(max).toLong())
+                }
+            }
+            val arrB = buff.toTypedArray()
+            val output = diff(arrA, arrB)
+            testDiffOutput(arrA, arrB, output)
+        }
+    }
+
+    fun runFullTest(textA: String, textB: String, cmdArgs: List<String>, correctOutput: String) {
+        setUp()
+        File("A.txt").writeText(textA)
+        File("B.txt").writeText(textB)
+        main((listOf("A.txt", "B.txt") + cmdArgs).toTypedArray())
+        assertEquals(correctOutput.trim(), stream.toString().trim())
+        tearDown()
+    }
+
+    @Test
+    fun full1() {
+        runFullTest("a", "b", listOf(), ">b\n<a\n")
+        runFullTest("a", "b", listOf("-c"), "${Color.Green}b\n${Color.Reset}${Color.Red}a\n${Color.Reset}")
+        runFullTest("a", "b", listOf("-o=\" \""), ">b <a")
     }
 }
 
