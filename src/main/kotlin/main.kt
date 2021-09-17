@@ -4,9 +4,8 @@ import java.lang.Integer.max
 import kotlin.system.exitProcess
 
 /** TODO
- * Char-by-char and no regex
- * Russian text
- * NlogN heuristic (find largest common SUBSTRING, split by it, run recursion)
+ * ND algorithm
+ * NlogN algorithm (find largest common substring, split by it, run recursion)
  * Block edit
  */
 
@@ -18,10 +17,6 @@ import kotlin.system.exitProcess
  * Usage:
  * assertEquals(true, testBit(11, 1))
  * assertEquals(false, testBit(11, 2))
- *
- * @param[a] mask
- * @param[i] bit index
- * @return true if i-th bit is set
  */
 fun testBit(a : Int, i : Int) : Boolean {
     return ((a shr i) and 1) != 0
@@ -38,12 +33,8 @@ data class LinePosition(val posA : Int, val posB : Int)
  *
  * Usage:
  * assertEquals(3, lcsBaseline(arrayOf(4, 1, 5, 6, 2, 7, 3), arrayOf(1, 9, 10, 11, 2, 3, 8))
- *
- * @param[a] first array
- * @param[b] second array
- * @return length of LCS(a, b)
  */
-fun lcsBaseline(a: Array<Long>, b: Array<Long>) : Int {
+fun lcsBaseline(a: LongArray, b: LongArray) : Int {
     var small = a
     var big = b
     if (small.size > big.size) {
@@ -75,28 +66,52 @@ fun lcsBaseline(a: Array<Long>, b: Array<Long>) : Int {
 }
 
 /**
+ * Optimized version of Array<Array<Short>>
+ *
+ * Data lies in one continuous array
+ *
+ * Usage:
+ * val a = ShortMatrix(n, m)
+ * a[0, 0] = 1
+ * println(a[0, 0])
+ */
+class ShortMatrix(val n: Int, val m: Int) {
+    var arr = ShortArray(n * m)
+    operator fun get(i: Int, j: Int) : Short = arr[i * m + j]
+    operator fun set(i: Int, j: Int, b: Short) {
+        arr[i * m + j] = b
+    }
+    operator fun set(i: Int, j: Int, b: Int) {
+        arr[i * m + j] = b.toShort()
+    }
+}
+
+/**
  * Dynamic programming for finding LCS length for two arrays
  *
  * Works in O(|a| * |b|), where a, b are the given arrays
  * (Algorithm on Wikipedia)[https://en.wikipedia.org/wiki/Longest_common_subsequence_problem#Solution_for_two_sequences]
+ * Returns the computed dp table
+ *
+ * Array<Int> -> ShortArray increases speed by 4 times
+ * max(dp, dp) -> if (dp > dp) gives another 20%
+ * Array<ShortArray> -> ShortMatrix - another 20%
  *
  * Usage:
- * println(lcsDP(arrayOf(4, 1, 5, 6, 2, 7, 3), arrayOf(1, 9, 10, 11, 2, 3, 8)).contentDeepToString())
- *
- * @param[a] first array
- * @param[b] second array
- * @return dp table
+ * println(lcsDP(arrayOf(4, 1, 5, 6, 2, 7, 3), arrayOf(1, 9, 10, 11, 2, 3, 8))[7, 7])
  */
-fun lcsDP(a: Array<Long>, b: Array<Long>) : Array<Array<Int>> {
+fun lcsDP(a: LongArray, b: LongArray) : ShortMatrix {
     val n = a.size
     val m = b.size
-    val dp : Array<Array<Int>> = Array (n + 1) { Array(m + 1) {0} }
+    val dp = ShortMatrix(n + 1, m + 1)
     for (i in 1..n) {
         for (j in 1..m) {
             if (a[i - 1] == b[j - 1]) {
-                dp[i][j] = dp[i - 1][j - 1] + 1
+                dp[i, j] = dp[i - 1, j - 1] + 1
+            } else if (dp[i - 1, j] > dp[i, j - 1]) {
+                dp[i, j] = dp[i - 1, j]
             } else {
-                dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+                dp[i, j] = dp[i, j - 1]
             }
         }
     }
@@ -110,13 +125,9 @@ fun lcsDP(a: Array<Long>, b: Array<Long>) : Array<Array<Int>> {
  *
  * Usage:
  * assertEquals(3, lcs(arrayOf(4, 1, 5, 6, 2, 7, 3), arrayOf(1, 9, 10, 11, 2, 3, 8))
- *
- * @param[a] first array
- * @param[b] second array
- * @return
  */
-fun lcs(a: Array<Long>, b: Array<Long>) : Int {
-    return lcsDP(a, b)[a.size][b.size]
+fun lcs(a: LongArray, b: LongArray) : Int {
+    return lcsDP(a, b)[a.size, b.size].toInt()
 }
 
 /**
@@ -128,14 +139,8 @@ fun lcs(a: Array<Long>, b: Array<Long>) : Int {
  *
  * Usage:
  * assertEquals(arrayOf(Pair(1, -1), Pair(2, 2), Pair(1, 3), Pair(2, 2)), diff(arrayOf(1, 3, 2), arrayOf(3, 4))
- *
- * @param[a] first array
- * @param[b] second array
- * @return diff as described above
  */
-
-
-fun diff(a: Array<Long>, b: Array<Long>) : List<LinePosition> {
+fun diff(a: LongArray, b: LongArray) : List<LinePosition> {
     val diff = mutableListOf<LinePosition>()
 
     fun addFromA(i: Int, j: Int) = diff.add(LinePosition(i, 0))
@@ -145,14 +150,13 @@ fun diff(a: Array<Long>, b: Array<Long>) : List<LinePosition> {
     var i = a.size
     var j = b.size
     while (i > 0 && j > 0) {
-        if (dp[i][j] == dp[i - 1][j]) {
+        if (dp[i, j] == dp[i - 1, j]) {
             addFromA(i, j)
             --i
-        } else if (dp[i][j] == dp[i][j - 1]) {
+        } else if (dp[i, j] == dp[i, j - 1]) {
             addFromB(i, j)
             --j
         } else {
-            assert(dp[i - 1][j - 1] + 1 == dp[i][j]) {"Incorrect dp"}
             addFromBoth(i, j)
             --i
             --j
@@ -169,6 +173,45 @@ fun diff(a: Array<Long>, b: Array<Long>) : List<LinePosition> {
     return diff.reversed()
 }
 
+/** Splits text into parts ending with one of delimiters
+ *
+ * Not the same as String.split, because it can preserve delimiters
+ * * means any symbol
+ * And if delimiters are ' ' or '\n', they are added to the last part (for correct diff output)
+ *
+ * Usage:
+ * assertEquals(listOf("one;", " two;", " three"), split("one; two; three", ";"))
+ * assertEquals(listOf("one;", " ", "two;", " ", "three"), split("one; two; three", "; "))
+ */
+fun split(s: String, delimiters: String, ignoreDelim: Boolean) : List<String> {
+    val parts = mutableListOf<String>()
+    val buff = StringBuilder()
+    val star = '*' in delimiters
+    for (c in s) {
+        val isDelim = c in delimiters
+        if (!isDelim || !ignoreDelim || star) {
+            buff.append(c)
+        }
+        if (star || c in delimiters) {
+            if (buff.length > 0) {
+                parts.add(buff.toString())
+            }
+            buff.clear()
+        }
+    }
+    if (buff.length > 0) {
+        if (!ignoreDelim) {
+            if ('\n' in delimiters) {
+                buff.append('\n')
+            } else if (' ' in delimiters) {
+                buff.append(' ')
+            }
+        }
+        parts.add(buff.toString())
+    }
+    return parts
+}
+
 /**
  * Polynomial 64-bit string hash
  *
@@ -177,16 +220,13 @@ fun diff(a: Array<Long>, b: Array<Long>) : List<LinePosition> {
  * Usage:
  * assertNotEquals(longHash("abacaba"), longHash("abracadabra"))
  * assertEquals(longHash("abacaba"), longHash("abacaba"))
- *
- * @param[s] given string
- * @return hash of s
  */
 fun longHash(s: String) : Long {
-    val BASE : Long = 59
-    val MOD : Long = 1e17.toLong() + 3
+    val base : Long = 59
+    val mod : Long = 1e17.toLong() + 3
     var sum : Long = 0
     for (c in s) {
-        sum = (BASE * sum + c.code.toLong()) % MOD
+        sum = (base * sum + c.code.toLong()) % mod
     }
     return sum
 }
@@ -196,15 +236,13 @@ fun longHash(s: String) : Long {
  *
  * Usage:
  * assert(toHashArray(arrayOf("a", b")) contentEquals arrayOf(97, 98))
- *
- * @param[lines] given string
  */
-fun toHashArray(lines: Array<String>) : Array<Long> {
+fun toHashArray(lines: Array<String>) : LongArray {
     val hashList = mutableListOf<Long>()
     for (s in lines) {
         hashList.add(longHash(s))
     }
-    return hashList.toTypedArray()
+    return hashList.toLongArray()
 }
 
 /**
@@ -221,22 +259,20 @@ There should be exactly two files and any number of options which begin with a h
 File order matters while option order do not.
 
 -c, --color                     use colors instead of '<', '>' and '='
--i, --input-delim=REGEX         splits input into units with REGEX
+-i, --input-delim=CHARS         splits input into parts ending with CHARS
 -o, --output-delim=STRING       joins output with STRING
--n, --no-newline                removes 0x0a and 0x0d from text
+-n, --ignore-delim              removes delimiters while splitting
 -h, --help                      display this help and exit
--g, --ignore-case               convert all input to lowercase before comparing             
-Full description of the REGEX format:
-https://docs.oracle.com/javase/8/docs/api/java/util/regex/Pattern.html
+-g, --ignore-case               convert all input to lowercase before comparing
 
 Usage:
 
 diff A B                        plain text line-by-line diff for A and B
-diff --color A B                colored diff
-diff -i=" " -o=" " A B          word-by-word diff
-diff -n -c -i=" " -o=" " A B    colored diff without newlines (e.g. for Windows files in Linux shell)
-or even...
-diff A --input-delim="[\.\?\!]" --output-delim=";\t" B --color
+diff -n --color A B             colored diff without newlines
+diff -i=" " -o="\n" A B         word-by-word diff with one word at line
+diff -i="*" -o="" A B           char-by-char diff
+diff -n -c -i=" " -o=" " A B    colored word-by-word diff without spaces
+diff A --input-delim=".?!" --output-delim=";\t" B --color
                                 colored sentence-by-sentence diff
                                 for A and B with output separated by ";\t"
     """
@@ -246,8 +282,7 @@ diff A --input-delim="[\.\?\!]" --output-delim=";\t" B --color
 enum class Color(val code: String) {
     Reset("\u001B[0m"),
     Red("\u001B[31m"),
-    Green("\u001B[32m"),
-    White("\u001B[37m");
+    Green("\u001B[32m");
     override fun toString() : String {
         return code
     }
@@ -269,15 +304,14 @@ fun main(args: Array<String>) {
     }
     val colorOutput = argValue("-c", "--color") != null
     val ignoreCase = argValue("-g", "--ignore-case") != null
-    val ignoreNewlines = argValue("-n", "--no-newline") != null
-    val inputDelim = Regex((argValue("-i", "--input-delim") ?: "\n").trim('"'))
-    val outputDelim = (argValue("-o", "--output-delim") ?: "\n").trim('"')
+    val ignoreDelim = argValue("-n", "--ignore-delim") != null
+    val inputDelim = (argValue("-i", "--input-delim") ?: "\n").trim('"')
+    val outputDelim = (argValue("-o", "--output-delim") ?: "").trim('"')
 
     fun readInputFromFile(name: String) : Array<String> {
-        val newlines = listOf(Char(10), Char(13))
-        val raw : String = File(name).bufferedReader().use(BufferedReader::readText)
+        val raw : String = File(name).readText()
         val text : String = if (ignoreCase) raw.map{ it.lowercaseChar() }.toString() else raw
-        val tokens : List<String> = text.split(inputDelim).map{ it.filter{ !ignoreNewlines || it !in newlines } }
+        val tokens : List<String> = split(text, inputDelim, ignoreDelim)
         return tokens.toTypedArray()
     }
 
