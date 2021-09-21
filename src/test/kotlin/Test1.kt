@@ -2,6 +2,7 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.PrintStream
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.random.Random
 import kotlin.random.nextInt
 import kotlin.system.measureNanoTime
@@ -170,6 +171,14 @@ internal class Test1 {
         tearDown()
     }
 
+    fun runFullTestFromFile(fileA: String, fileB: String, cmdArgs: List<String>, ansFile: String) {
+        val relAddress = "C:\\Users\\msh24\\IdeaProjects\\pf-2021-diff-msh2481\\test\\full\\"
+        setUp()
+        main((listOf(relAddress + fileA, relAddress + fileB) + cmdArgs).toTypedArray())
+        assertEquals(File(relAddress + ansFile).readText().trim(), stream.toString().trim())
+        tearDown()
+    }
+
     fun clockFullTest(lines: Int, avgLineLen: Int, changes: Int) {
         val textA = MutableList(lines) { genString(avgLineLen, 26) }
         val textB = textA
@@ -183,9 +192,9 @@ internal class Test1 {
         setUp()
         File("A.txt").writeText(textA.joinToString("\n"))
         File("B.txt").writeText(textB.joinToString("\n"))
-        val milliseconds = 1e-6 * measureNanoTime { main(arrayOf("A.txt", "B.txt")) }
+        val milliseconds = (1e-6 * measureNanoTime { main(arrayOf("A.txt", "B.txt")) }).roundToInt()
         tearDown()
-        println("N = $lines, L = $avgLineLen, D = $changes: $milliseconds ms")
+        println("N = $lines, L = $avgLineLen,\tD = $changes:\t$milliseconds ms")
     }
 
     @Test
@@ -202,164 +211,23 @@ internal class Test1 {
         runFullTest("abc", "cba", listOf("-n", "-i=b"), ">c=a<c")
         runFullTest("abc", "cba", listOf("-i=b"), ">cb>a<ab<c")
         runFullTest("a\n\nb", "a\nb", listOf(), "=a\n<\n=b")
-        runFullTest("import kotlin.test.Test\n" +
-                "import kotlin.test.assertEquals\n" +
-                "\n" +
-                "class Task3Test {\n" +
-                "    @Test\n" +
-                "    fun fTest() {\n" +
-                "        assertEquals(1.0, f(0.0), 1e-5)\n" +
-                "        TODO(\"Необходимо добавить больше тестов\")\n" +
-                "    }\n" +
-                "\n" +
-                "    @Test\n" +
-                "    fun numberOfDaysTest() {\n" +
-                "        assertEquals(365, numberOfDays(2021))\n" +
-                "        TODO(\"Необходимо добавить больше тестов\")\n" +
-                "    }\n" +
-                "\n" +
-                "    @Test\n" +
-                "    fun rotate2Test() {\n" +
-                "        assertEquals('С', rotate2('С', 1, -1))\n" +
-                "        TODO(\"Необходимо добавить больше тестов\")\n" +
-                "    }\n" +
-                "\n" +
-                "    @Test\n" +
-                "    fun ageDescriptionTest() {\n" +
-                "        assertEquals(\"сорок два года\", ageDescription(42))\n" +
-                "        TODO(\"Необходимо добавить больше тестов\")\n" +
-                "    }\n" +
-                "\n" +
-                "}",
-            "import kotlin.test.Test\n" +
-                "import kotlin.test.assertEquals\n" +
-                "\n" +
-                "class Task3Test {\n" +
-                "    @Test\n" +
-                "    fun fTest() {\n" +
-                "        assertEquals(1.0, f(0.0), 1e-5)\n" +
-                "        assertEquals(0.0, f(-0.1), 1e-5)\n" +
-                "        assertEquals(1.0, f(0.1), 1e-5)\n" +
-                "        assertEquals(1.0, f(0.9), 1e-5)\n" +
-                "        assertEquals(-1.0, f(1.0), 1e-5)\n" +
-                "        assertEquals(-1.0, f(1.9), 1e-5)\n" +
-                "        assertEquals(1.0, f(2.0), 1e-5)\n" +
-                "        assertEquals(1.0, f(4.0), 1e-5)\n" +
-                "        assertEquals(-1.0, f(5.0), 1e-5)\n" +
-                "        assertEquals(-1.0, f(7.5), 1e-5)\n" +
-                "        assertEquals(1.0, f(10000.1), 1e-5)\n" +
-                "    }\n" +
-                "\n" +
-                "    @Test\n" +
-                "    fun numberOfDaysTest() {\n" +
-                "        assertEquals(365, numberOfDays(2021))\n" +
-                "        assertEquals(365, numberOfDays(2022))\n" +
-                "        assertEquals(366, numberOfDays(2024))\n" +
-                "        assertEquals(366, numberOfDays(2000))\n" +
-                "        assertEquals(365, numberOfDays(2100))\n" +
-                "    }\n" +
-                "\n" +
-                "    @Test\n" +
-                "    fun rotate2Test() {\n" +
-                "        assertEquals('С', rotate2('С', 1, -1))\n" +
-                "        assertEquals('Ю', rotate2('С', -1, -1))\n" +
-                "        assertEquals('Ю', rotate2('С', 1, 1))\n" +
-                "        assertEquals('В', rotate2('С', 1, 2))\n" +
-                "        assertEquals('З', rotate2('С', -1, 2))\n" +
-                "        assertEquals('С', rotate2('С', 2, 2))\n" +
-                "        assertEquals('Ю', rotate2('В', 2, 1))\n" +
-                "        assertEquals('З', rotate2('Ю', 2, 1))\n" +
-                "        assertEquals('С', rotate2('З', 2, 1))\n" +
-                "    }\n" +
-                "\n" +
-                "    @Test\n" +
-                "    fun ageDescriptionTest() {\n" +
-                "        assertEquals(\"шестьдесят девять лет\", ageDescription(69))\n" +
-                "        assertEquals(\"пятьдесят восемь лет\", ageDescription(58))\n" +
-                "        assertEquals(\"сорок семь лет\", ageDescription(47))\n" +
-                "        assertEquals(\"тридцать шесть лет\", ageDescription(36))\n" +
-                "        assertEquals(\"двадцать пять лет\", ageDescription(25))\n" +
-                "        assertEquals(\"шестьдесят четыре года\", ageDescription(64))\n" +
-                "        assertEquals(\"пятьдесят три года\", ageDescription(53))\n" +
-                "        assertEquals(\"сорок два года\", ageDescription(42))\n" +
-                "        assertEquals(\"тридцать один год\", ageDescription(31))\n" +
-                "        assertEquals(\"двадцать лет\", ageDescription(20))\n" +
-                "    }\n" +
-                "\n" +
-                "}",
-                listOf(),
-        "=import kotlin.test.Test\n" +
-                "=import kotlin.test.assertEquals\n" +
-                "=\n" +
-                "=class Task3Test {\n" +
-                "=    @Test\n" +
-                "=    fun fTest() {\n" +
-                "=        assertEquals(1.0, f(0.0), 1e-5)\n" +
-                ">        assertEquals(0.0, f(-0.1), 1e-5)\n" +
-                ">        assertEquals(1.0, f(0.1), 1e-5)\n" +
-                ">        assertEquals(1.0, f(0.9), 1e-5)\n" +
-                ">        assertEquals(-1.0, f(1.0), 1e-5)\n" +
-                ">        assertEquals(-1.0, f(1.9), 1e-5)\n" +
-                ">        assertEquals(1.0, f(2.0), 1e-5)\n" +
-                ">        assertEquals(1.0, f(4.0), 1e-5)\n" +
-                ">        assertEquals(-1.0, f(5.0), 1e-5)\n" +
-                ">        assertEquals(-1.0, f(7.5), 1e-5)\n" +
-                ">        assertEquals(1.0, f(10000.1), 1e-5)\n" +
-                "<        TODO(\"Необходимо добавить больше тестов\")\n" +
-                "=    }\n" +
-                "=\n" +
-                "=    @Test\n" +
-                "=    fun numberOfDaysTest() {\n" +
-                "=        assertEquals(365, numberOfDays(2021))\n" +
-                ">        assertEquals(365, numberOfDays(2022))\n" +
-                ">        assertEquals(366, numberOfDays(2024))\n" +
-                ">        assertEquals(366, numberOfDays(2000))\n" +
-                ">        assertEquals(365, numberOfDays(2100))\n" +
-                "<        TODO(\"Необходимо добавить больше тестов\")\n" +
-                "=    }\n" +
-                "=\n" +
-                "=    @Test\n" +
-                "=    fun rotate2Test() {\n" +
-                "=        assertEquals('С', rotate2('С', 1, -1))\n" +
-                ">        assertEquals('Ю', rotate2('С', -1, -1))\n" +
-                ">        assertEquals('Ю', rotate2('С', 1, 1))\n" +
-                ">        assertEquals('В', rotate2('С', 1, 2))\n" +
-                ">        assertEquals('З', rotate2('С', -1, 2))\n" +
-                ">        assertEquals('С', rotate2('С', 2, 2))\n" +
-                ">        assertEquals('Ю', rotate2('В', 2, 1))\n" +
-                ">        assertEquals('З', rotate2('Ю', 2, 1))\n" +
-                ">        assertEquals('С', rotate2('З', 2, 1))\n" +
-                "<        TODO(\"Необходимо добавить больше тестов\")\n" +
-                "=    }\n" +
-                "=\n" +
-                "=    @Test\n" +
-                "=    fun ageDescriptionTest() {\n" +
-                ">        assertEquals(\"шестьдесят девять лет\", ageDescription(69))\n" +
-                ">        assertEquals(\"пятьдесят восемь лет\", ageDescription(58))\n" +
-                ">        assertEquals(\"сорок семь лет\", ageDescription(47))\n" +
-                ">        assertEquals(\"тридцать шесть лет\", ageDescription(36))\n" +
-                ">        assertEquals(\"двадцать пять лет\", ageDescription(25))\n" +
-                ">        assertEquals(\"шестьдесят четыре года\", ageDescription(64))\n" +
-                ">        assertEquals(\"пятьдесят три года\", ageDescription(53))\n" +
-                "=        assertEquals(\"сорок два года\", ageDescription(42))\n" +
-                ">        assertEquals(\"тридцать один год\", ageDescription(31))\n" +
-                ">        assertEquals(\"двадцать лет\", ageDescription(20))\n" +
-                "<        TODO(\"Необходимо добавить больше тестов\")\n" +
-                "=    }\n" +
-                "=\n" +
-                "=}")
     }
+
     @Test
-    fun bigFullTests() {
-        clockFullTest(10, 30, 10)
-        clockFullTest(100, 30, 100)
-        clockFullTest(1000, 30, 1000)
-        clockFullTest(3000, 30, 3000)
-        clockFullTest(3000, 30, 30)
-        clockFullTest(3000, 30, 300)
-        clockFullTest(3000, 30, 3)
+    fun fileFullTests() {
+        runFullTestFromFile("msh2481A.kt", "msh2481B.kt", listOf(), "msh2481.ans")
+        runFullTestFromFile("linuxA.c", "linuxB.c", listOf(), "linux.ans")
+    }
+
+    @Test
+    fun maxFullTests() {
         clockFullTest(10000, 30, 100)
+        clockFullTest(10000, 300, 100)
+        clockFullTest(10000, 30, 10000)
+        clockFullTest(10000, 300, 10000)
         clockFullTest(16000, 30, 1000)
+        clockFullTest(16000, 300, 1000)
+        clockFullTest(16000, 30, 16000)
         clockFullTest(16000, 300, 16000)
     }
 }
