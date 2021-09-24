@@ -172,7 +172,7 @@ internal class Test1 {
     }
 
     fun runFullTestFromFile(fileA: String, fileB: String, cmdArgs: List<String>, ansFile: String) {
-        val relAddress = "C:\\Users\\msh24\\IdeaProjects\\pf-2021-diff-msh2481\\test\\full\\"
+        val relAddress = "test/full/"
         setUp()
         main((listOf(relAddress + fileA, relAddress + fileB) + cmdArgs).toTypedArray())
         assertEquals(File(relAddress + ansFile).readText().trim(), stream.toString().trim())
