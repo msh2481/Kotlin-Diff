@@ -1,3 +1,4 @@
+import org.junit.jupiter.api.TestTemplate
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.PrintStream
@@ -79,9 +80,9 @@ internal class Test1 {
 
     fun runLcsTest(a: LongArray, b: LongArray, knownAnswer: Int?) {
         if (knownAnswer == null) {
-            assertEquals(lcsBaseline(a, b), lcs(a, b), "stress, runLcsTest(${a.contentToString()}, ${b.contentToString()})")
+            assertEquals(lcsBaseline(a, b), FastLCS.lcs(a, b), "stress, runLcsTest(${a.contentToString()}, ${b.contentToString()})")
         } else {
-            assertEquals(knownAnswer, lcs(a, b), "main, runLcsTest(${a.contentToString()}, ${b.contentToString()})")
+            assertEquals(knownAnswer, FastLCS.lcs(a, b), "main, runLcsTest(${a.contentToString()}, ${b.contentToString()})")
             assertEquals(knownAnswer, lcsBaseline(a, b), "baseline, runLcsTest(${a.contentToString()}, ${b.contentToString()})")
         }
     }
@@ -109,8 +110,14 @@ internal class Test1 {
     fun testDiffOutput(arrA: LongArray, arrB: LongArray, output: List<LinePosition>, numOfEdits: Int? = null) {
         var ptrA = 0
         var ptrB = 0
-        assertEquals(arrA.size + arrB.size - lcs(arrA, arrB), output.size)
-        numOfEdits?.let{ assert(it >= output.size) { "better edit script is known: $it vs ${output.size}"} }
+        assertEquals(arrA.size + arrB.size - FastLCS.lcs(arrA, arrB), output.size)
+        if (numOfEdits != null && output.size > min(arrA.size, arrB.size) + numOfEdits) {
+            println("better edit script is known: ${output.size} vs ${min(arrA.size, arrB.size) + numOfEdits}")
+            println(arrA.contentToString())
+            println(arrB.contentToString())
+            println(output)
+            assert(false)
+        }
         for ((posA, posB) in output) {
             if (posA > 0 && posB > 0) {
                 assert(ptrA < arrA.size) { "ptrA < arrA.size" }
@@ -137,18 +144,19 @@ internal class Test1 {
             val max = 1 shl Random.nextInt(20)
             val arrA = genLongArray(Random.nextInt(1..100), max)
             val arrB = genLongArray(Random.nextInt(1..100), max)
-            val output = diff(arrA, arrB)
+            val output = FastLCS.diff(arrA, arrB)
             testDiffOutput(arrA, arrB, output)
         }
     }
 
     @Test
     fun trickyDiffTests() {
-        repeat(10000) {
-            val max = 1 shl Random.nextInt(20)
-            val arrA = genLongArray(Random.nextInt(1..100), max)
+        val ratios = mutableListOf<Double>()
+        repeat(1000) {
+            val max = 1 shl Random.nextInt(5..10)
+            val arrA = genLongArray(Random.nextInt(10..300), max)
             val buff = arrA.toMutableList()
-            val edits = Random.nextInt(0..min(10, arrA.size))
+            val edits = Random.nextInt(10..min(100, arrA.size))
             repeat(edits) {
                 if (Random.nextInt(2) == 0) {
                     buff.removeAt(Random.nextInt(buff.size))
@@ -157,9 +165,16 @@ internal class Test1 {
                 }
             }
             val arrB = buff.toLongArray()
-            val output = diff(arrA, arrB)
+            val output = FastLCS.diff(arrA, arrB)
+            testDiffOutput(arrA, arrB, output, edits)
+            val heuristic = HeuristicLCS.diff(arrA, arrB)
             testDiffOutput(arrA, arrB, output)
+            assert(output.size <= heuristic.size)
+            ratios.add(heuristic.size.toDouble() / output.size)
         }
+        ratios.sort()
+        println("Average ratio: ${ratios.average()}")
+        println("Quantiles: ${ratios.first()} ${ratios[ratios.size / 4]} ${ratios[ratios.size / 2]} ${ratios[ratios.size * 3 / 4]} ${ratios.last()}")
     }
 
     fun runFullTest(textA: String, textB: String, cmdArgs: List<String>, correctOutput: String) {
@@ -179,7 +194,7 @@ internal class Test1 {
         tearDown()
     }
 
-    fun clockFullTest(lines: Int, avgLineLen: Int, changes: Int) {
+    fun clockFullTest(lines: Int, avgLineLen: Int, changes: Int, fastMode: Boolean) {
         val textA = MutableList(lines) { genString(avgLineLen, 26) }
         val textB = textA
         repeat(changes) {
@@ -192,9 +207,10 @@ internal class Test1 {
         setUp()
         File("A.txt").writeText(textA.joinToString("\n"))
         File("B.txt").writeText(textB.joinToString("\n"))
-        val milliseconds = (1e-6 * measureNanoTime { main(arrayOf("A.txt", "B.txt")) }).roundToInt()
+        val args = if (fastMode) arrayOf("A.txt", "B.txt", "-f") else arrayOf("A.txt", "B.txt")
+        val milliseconds = (1e-6 * measureNanoTime { main(args) }).roundToInt()
         tearDown()
-        println("N = $lines, L = $avgLineLen,\tD = $changes:\t$milliseconds ms")
+        println("Fast = $fastMode,\tN = $lines, L = $avgLineLen,\tD = $changes:\t$milliseconds ms")
     }
 
     @Test
@@ -221,15 +237,41 @@ internal class Test1 {
 
     @Test
     fun maxFullTests() {
-        clockFullTest(10000, 30, 100)
-        clockFullTest(10000, 300, 100)
-        clockFullTest(10000, 30, 10000)
-        clockFullTest(10000, 300, 10000)
-        clockFullTest(16000, 30, 1000)
-        clockFullTest(16000, 300, 1000)
-        clockFullTest(16000, 30, 16000)
-        clockFullTest(16000, 300, 16000)
+        clockFullTest(10000, 30, 100, false)
+        clockFullTest(10000, 300, 100, false)
+        clockFullTest(10000, 30, 10000, false)
+        clockFullTest(10000, 300, 10000, false)
+        clockFullTest(16000, 30, 1000, false)
+        clockFullTest(16000, 300, 1000, false)
+        clockFullTest(16000, 30, 16000, false)
+        clockFullTest(16000, 300, 16000, false)
+
+        clockFullTest(10000, 30, 10000, true)
+        clockFullTest(16000, 30, 16000, true)
+        clockFullTest(50000, 30, 50000, true)
+        clockFullTest(100000, 30, 100000, true)
+        clockFullTest(900000, 30, 900000, true)
     }
+
+    @Test
+    fun hasherTests() {
+        val a = listOf<Long>(1, 2, 1, 3, 1, 2, 1)
+        val h = PolynomialHasher(a.toLongArray())
+        val p = mutableListOf<Pair<List<Long>, Long>>()
+        for (i in a.indices) {
+            for (j in i..a.size) {
+                val cur : Pair<List<Long>, Long> = Pair(a.subList(i, j), h.rangeHash(i, j))
+                p.add(cur)
+            }
+        }
+        for (x in p) {
+            for (y in p) {
+                assertEquals(x.first == y.first, x.second == y.second, "${x.first} ${y.first} ${x.second} ${y.second}")
+            }
+        }
+    }
+
+
 }
 
 

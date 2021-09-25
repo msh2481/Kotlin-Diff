@@ -3,7 +3,6 @@ import kotlin.system.exitProcess
 
 /** TODO
  * ND algorithm
- * NlogN algorithm (find largest common substring, split by it, run recursion)
  * Block edit
  */
 
@@ -100,7 +99,7 @@ File order matters while option order do not.
 -n, --ignore-delim              removes delimiters while splitting
 -h, --help                      display this help and exit
 -g, --ignore-case               convert all input to lowercase before comparing
-
+-f, --fast                      use fast approximation algorithm
 Usage:
 
 diff A B                        plain text line-by-line diff for A and B
@@ -130,16 +129,18 @@ data class CommandlineArguments(
     val ignoreCase : Boolean,
     val ignoreDelim : Boolean,
     val inputDelim : Set<Char>,
-    val outputDelim : String
+    val outputDelim : String,
+    val fastMode : Boolean
 )
 
 fun parseArgs(args: Array<String>) : CommandlineArguments {
-    var files = mutableListOf<String>()
+    val files = mutableListOf<String>()
     var colorOutput = false
     var ignoreCase = false
     var ignoreDelim = false
     var inputDelim = setOf('\n')
     var outputDelim = ""
+    var fastMode = false
 
     for (arg in args) {
         when (arg.substringBefore("=").trim()) {
@@ -148,6 +149,7 @@ fun parseArgs(args: Array<String>) : CommandlineArguments {
             "-n", "--ignore-delim" -> ignoreDelim = true
             "-i", "--input-delim" -> inputDelim = arg.substringAfter("=").toSet()
             "-o", "--output-delim" -> outputDelim = arg.substringAfter("=").trim('"')
+            "-f", "--fast" -> fastMode = true
             "-h", "--help" -> printHelp().also{ exitProcess(0) }
             else -> {
                 assert(arg.length > 0 && arg.first() != '-')
@@ -156,7 +158,7 @@ fun parseArgs(args: Array<String>) : CommandlineArguments {
         }
     }
     assert(files.size == 2)
-    return CommandlineArguments(Pair(files[0], files[1]), colorOutput, ignoreCase, ignoreDelim, inputDelim, outputDelim)
+    return CommandlineArguments(Pair(files[0], files[1]), colorOutput, ignoreCase, ignoreDelim, inputDelim, outputDelim, fastMode)
 }
 
 fun readInputFromFile(name: String, args : CommandlineArguments) : List<String> {
@@ -193,6 +195,6 @@ fun main(rawArgs: Array<String>) {
     val arrA = toHashArray(tokensA)
     val arrB = toHashArray(tokensB)
 
-    val result = diff(arrA, arrB)
+    val result = if (args.fastMode) HeuristicLCS.diff(arrA, arrB) else FastLCS.diff(arrA, arrB)
     printDiff(tokensA, tokensB, result, args)
 }
