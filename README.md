@@ -1,15 +1,12 @@
-# Курс основ программирования на МКН СПбГУ
-## Проект 1: утилита diff
+# Basics of programming course: diff tool
 
-[Постановка задачи](./TASK.md)
+## Running the diff
 
-## Использование 
-
-Если вы запускаете эту утилиту в виде jar-файла (назовём его diff.jar), то формат будет такой:
+General format is:
     
     java -jar diff.jar ФАЙЛ1 ФАЙЛ2 [ОПЦИИ]
 
-А отдельные опции подробно описаны в справке, которую можно вызвать и из программы:
+And the particular options are described in help text:
 
     -c, --color                     use colors instead of '<', '>' and '='
     -i, --input-delim=CHARS         splits input into parts ending with CHARS
@@ -29,18 +26,10 @@
     colored sentence-by-sentence diff
     for A and B with output separated by ";\t"
 
-## Описание
+## Algorithms description
 
-На данный момент в основе программы лежит базовый [алгоритм](https://en.wikipedia.org/wiki/Longest_common_subsequence_problem#Solution_for_two_sequences) использующий динамическое программирование за O(NM) времени и памяти, где N и M - количество строк (или иных сравниваемых частей) в данных файлах.
-На моём ноутбуке он работает вплоть до N = 16000 (для простоты, N = M),
-причём работа занимает не больше секунды, а при большем количестве перестаёт хватать памяти.
+This utility can use one of two algorithms: a basic dynamic programming in O(NM) time and space and a fast heuristic in O((N+M) log (N+M)) time and O(N + M) space.
 
-Также реализован быстрый алгоритм, находящий ответ, который обычно близок к оптимальному
-(отличие в 1.5-2 раза на случайных тестах) за O((N + M) log (N + M)) в среднем.
-Практически же, это позволяет обрабатывать файлы в миллион строк за пару секунд (не считая считывания).
+The first one always finds optimal answers and works for files with a few thousand lines (if using newlines as delimiters), e.g. 16k lines for my 16GB RAM laptop in less than a second. For larger inputs it runs out of memory.
 
-
-Насколько мне известно, в общем случае решения работающие существенно быстрее пока не найдено,
-но существуют оптимизации для определённых случаев:
-* Алгоритм Хиршберга, который будучи немного медленнее (неасимптотически) уменьшает требования к памяти до O(N + M)
-* Алгоритм за O((N + M)D) времени и памяти, где D - размер оптимального ответа. На нём основаны большинство алгоритмов для подобных программ.
+Contrary, the second always can find larger diffs than possible (though, still correct), but runs much faster. For example, it have processed two million-line random files in a few seconds. The idea of this algorithm is as follows: choose some length from 1 to N (N initially), check if there is a common substring of this length (linear time by hashing and hash tables), if there is -- invoke recursive calls for left and right sides, else -- multiply the chosen length by constant.
